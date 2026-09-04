@@ -1,0 +1,314 @@
+/* =========================================================
+   LOGIN PAGE
+   Mobile-first • Attendance Tracker
+========================================================= */
+
+.login-page {
+  min-height: 100dvh;
+  width: 100%;
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px 16px;
+
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(99, 102, 241, 0.12),
+      transparent 42%
+    ),
+    #f8fafc;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+
+/* =========================================================
+   LOGIN CARD
+========================================================= */
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+
+  box-sizing: border-box;
+
+  padding: 30px 22px 24px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+
+  box-shadow:
+    0 20px 45px rgba(15, 23, 42, 0.08);
+
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* =========================================================
+   TITLE
+========================================================= */
+
+.login-card h1 {
+  margin: 0;
+
+  text-align: center;
+
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+
+  letter-spacing: -0.5px;
+
+  color: #111827;
+}
+
+
+/* =========================================================
+   SUBTITLE
+========================================================= */
+
+.login-card > p {
+  margin: 8px 0 24px;
+
+  text-align: center;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  color: #6b7280;
+}
+
+
+/* =========================================================
+   ADMIN / STUDENT TABS
+========================================================= */
+
+.login-tabs {
+  width: 100%;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  padding: 4px;
+  margin-bottom: 22px;
+
+  background: #f1f5f9;
+
+  border-radius: 14px;
+
+  box-sizing: border-box;
+}
+
+
+.login-tab {
+  min-height: 44px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: transparent;
+
+  color: #64748b;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.login-tab.active {
+  background: #ffffff;
+
+  color: #111827;
+
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+
+.login-tab:active {
+  transform: scale(0.98);
+}
+
+
+/* =========================================================
+   INPUTS
+========================================================= */
+
+.login-card input {
+  width: 100%;
+  min-height: 50px;
+
+  box-sizing: border-box;
+
+  margin-bottom: 14px;
+
+  padding: 0 15px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 13px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+
+.login-card input::placeholder {
+  color: #9ca3af;
+}
+
+
+.login-card input:focus {
+  border-color: #6366f1;
+
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+
+.login-card input:disabled {
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.login-error {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  margin: 2px 0 14px;
+
+  padding: 12px 13px;
+
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  line-height: 1.45;
+
+  text-align: left;
+}
+
+
+/* =========================================================
+   LOGIN BUTTON
+========================================================= */
+
+.login-card > button[type="submit"] {
+  width: 100%;
+  min-height: 50px;
+
+  margin-top: 2px;
+
+  border: none;
+  border-radius: 13px;
+
+  background: #111827;
+
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 18px rgba(17, 24, 39, 0.16);
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.login-card > button[type="submit"]:hover {
+  box-shadow:
+    0 10px 22px rgba(17, 24, 39, 0.20);
+}
+
+
+.login-card > button[type="submit"]:active {
+  transform: scale(0.98);
+}
+
+
+.login-card > button[type="submit"]:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   DESKTOP
+========================================================= */
+
+@media (min-width: 640px) {
+  .login-page {
+    padding: 32px 20px;
+  }
+
+  .login-card {
+    padding: 36px 30px 28px;
+  }
+
+  .login-card h1 {
+    font-size: 28px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-tab,
+  .login-card input,
+  .login-card > button[type="submit"] {
+    transition: none;
+  }
+}
