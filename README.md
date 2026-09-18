@@ -6,7 +6,7 @@ ClassTrack was developed to solve a real attendance-management problem in a coll
 
 ## 🚀 Live Demo
 
-[[ClassTrack Live Demo](YOUR_VERCEL_URL)](https://clastrack.vercel.app/)
+[[ClassTrack Live Demo](https://clastrack.vercel.app/)
 
 ## 💻 GitHub
 
