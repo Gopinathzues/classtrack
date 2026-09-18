@@ -170,6 +170,8 @@ function AdminDashboard({ session }) {
 
   const [selectedStudent, setSelectedStudent] =
     useState(null);
+  const [attendancePasteText, setAttendancePasteText] =
+    useState("");
 
   // =====================================================
   // LIVE CLOCK
@@ -743,6 +745,223 @@ function AdminDashboard({ session }) {
     alert(
       "Day details and attendance saved successfully."
     );
+  }
+  // =========================
+  // PASTE WHATSAPP ATTENDANCE
+  // =========================
+
+  function normalizeStudentName(name) {
+  return name
+    .replace(/\*/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .toLowerCase();
+}
+
+function normalizeNameWithoutInitials(name) {
+  return name
+    .replace(/\*/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .trim()
+    .split(/\s+/)
+    .filter((part) => part.length > 1)
+    .join("")
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .toLowerCase();
+}
+
+  function parseWhatsAppAttendance(message) {
+    const lines = message
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const parsedStudents = [];
+
+    let currentGroup = null;
+
+    for (const line of lines) {
+      const cleanLine = line
+        .replace(/\*/g, "")
+        .trim();
+
+      // Detect group
+      if (cleanLine === "IT") {
+        currentGroup = "IT";
+        continue;
+      }
+
+      if (
+  cleanLine === "IT-CS" ||
+  cleanLine === "IT CS"
+) {
+  currentGroup = "IT-CS";
+  continue;
+}
+
+      // Detect numbered student name
+      const match = cleanLine.match(
+        /^\d+\.\s*(.+?)\s*$/
+      );
+
+      if (!match || !currentGroup) {
+        continue;
+      }
+
+      const name = match[1].trim();
+
+      parsedStudents.push({
+        name,
+        group: currentGroup,
+      });
+    }
+
+    return parsedStudents;
+  }
+
+  async function handleAttendancePaste(message) {
+    if (!message.trim()) return;
+
+    setAttendanceError("");
+
+    if (isFinalized) {
+      setAttendanceError(
+        "This attendance day is finalized and locked."
+      );
+      return;
+    }
+
+    if (dayType === "holiday") {
+      setAttendanceError(
+        "This is a holiday. Attendance cannot be marked."
+      );
+      return;
+    }
+
+    const parsedStudents =
+      parseWhatsAppAttendance(message);
+
+    if (parsedStudents.length === 0) {
+      setAttendanceError(
+        "No attendance names were detected in the pasted message."
+      );
+      return;
+    }
+
+    const matchedStudents = [];
+    const unmatchedStudents = [];
+
+    for (const parsed of parsedStudents) {
+  const normalizedName =
+    normalizeStudentName(parsed.name);
+
+  // 1. Try exact name match first
+  const exactMatches = students.filter(
+    (student) =>
+      student.group === parsed.group &&
+      normalizeStudentName(student.name) ===
+        normalizedName
+  );
+
+  if (exactMatches.length === 1) {
+    matchedStudents.push(exactMatches[0]);
+    continue;
+  }
+
+  // 2. If exact match is not found,
+  //    match while ignoring trailing initials
+  const nameWithoutInitials =
+    normalizeNameWithoutInitials(parsed.name);
+
+  const initialInsensitiveMatches =
+    students.filter(
+      (student) =>
+        student.group === parsed.group &&
+        normalizeNameWithoutInitials(student.name) ===
+          nameWithoutInitials
+    );
+
+  if (initialInsensitiveMatches.length === 1) {
+    matchedStudents.push(
+      initialInsensitiveMatches[0]
+    );
+  } else {
+    unmatchedStudents.push(
+      `${parsed.name} (${parsed.group})`
+    );
+  }
+}
+
+    // Remove duplicate students
+    const uniqueStudents = Array.from(
+      new Map(
+        matchedStudents.map((student) => [
+          student.id,
+          student,
+        ])
+      ).values()
+    );
+
+    if (uniqueStudents.length === 0) {
+      setAttendanceError(
+        "No matching students were found."
+      );
+      return;
+    }
+
+    // Create attendance day if needed
+    const dayReady = await ensureAttendanceDay();
+
+    if (!dayReady) return;
+
+    // Mark all matched students Present
+    const attendanceRecords =
+      uniqueStudents.map((student) => ({
+        attendance_date: date,
+        student_id: student.id,
+        status: "present",
+      }));
+
+    const { error } = await supabase
+      .from("attendance_records")
+      .upsert(attendanceRecords, {
+        onConflict:
+          "attendance_date,student_id",
+      });
+
+    if (error) {
+      console.error(
+        "Paste attendance error:",
+        error
+      );
+
+      setAttendanceError(
+        "Unable to mark pasted attendance."
+      );
+
+      return;
+    }
+
+    // Immediately update current browser
+    setTodayAttendance((previous) => {
+      const updated = { ...previous };
+
+      uniqueStudents.forEach((student) => {
+        updated[student.id] = "present";
+      });
+
+      return updated;
+    });
+
+    // Show only if something could not be matched
+    if (unmatchedStudents.length > 0) {
+      setAttendanceError(
+        `${uniqueStudents.length} students marked Present. ` +
+        `${unmatchedStudents.length} name(s) could not be matched: ` +
+        unmatchedStudents.join(", ")
+      );
+    }
   }
 
   // =====================================================
@@ -1333,148 +1552,148 @@ ${createStudentList(
   const getStudentAttendance = useCallback(
     async function getStudentAttendance(student) {
       const {
-      data: finalizedDays,
-      error: daysError,
-    } = await supabase
-      .from("attendance_days")
-      .select(
-        "attendance_date, working_hours, day_type"
-      )
-      .eq("is_finalized", true)
-      .eq("day_type", "working")
-      .order(
-        "attendance_date",
-        {
-          ascending: true,
+        data: finalizedDays,
+        error: daysError,
+      } = await supabase
+        .from("attendance_days")
+        .select(
+          "attendance_date, working_hours, day_type"
+        )
+        .eq("is_finalized", true)
+        .eq("day_type", "working")
+        .order(
+          "attendance_date",
+          {
+            ascending: true,
+          }
+        );
+
+      if (daysError) {
+        console.error(
+          "Statistics days error:",
+          daysError
+        );
+
+        return emptyStats();
+      }
+
+      const days =
+        finalizedDays || [];
+
+      if (days.length === 0) {
+        return emptyStats();
+      }
+
+      const dates = days.map(
+        (day) =>
+          day.attendance_date
+      );
+
+      const {
+        data: records,
+        error: recordsError,
+      } = await supabase
+        .from("attendance_records")
+        .select(
+          "attendance_date, status"
+        )
+        .eq(
+          "student_id",
+          student.id
+        )
+        .in(
+          "attendance_date",
+          dates
+        );
+
+      if (recordsError) {
+        console.error(
+          "Statistics records error:",
+          recordsError
+        );
+
+        return emptyStats();
+      }
+
+      const recordMap = {};
+
+      (records || []).forEach(
+        (record) => {
+          recordMap[
+            record.attendance_date
+          ] = record.status;
         }
       );
 
-    if (daysError) {
-      console.error(
-        "Statistics days error:",
-        daysError
-      );
+      const totalFinalizedDays =
+        days.length;
 
-      return emptyStats();
-    }
-
-    const days =
-      finalizedDays || [];
-
-    if (days.length === 0) {
-      return emptyStats();
-    }
-
-    const dates = days.map(
-      (day) =>
-        day.attendance_date
-    );
-
-    const {
-      data: records,
-      error: recordsError,
-    } = await supabase
-      .from("attendance_records")
-      .select(
-        "attendance_date, status"
-      )
-      .eq(
-        "student_id",
-        student.id
-      )
-      .in(
-        "attendance_date",
-        dates
-      );
-
-    if (recordsError) {
-      console.error(
-        "Statistics records error:",
-        recordsError
-      );
-
-      return emptyStats();
-    }
-
-    const recordMap = {};
-
-    (records || []).forEach(
-      (record) => {
-        recordMap[
-          record.attendance_date
-        ] = record.status;
-      }
-    );
-
-    const totalFinalizedDays =
-      days.length;
-
-    const presentDays =
-      days.filter(
-        (day) =>
-          recordMap[
-          day.attendance_date
-          ] === "present"
-      ).length;
-
-    const absentDays =
-      totalFinalizedDays -
-      presentDays;
-
-    const attendancePercentage =
-      totalFinalizedDays > 0
-        ? (
-          (presentDays /
-            totalFinalizedDays) *
-          100
-        ).toFixed(1)
-        : "0.0";
-
-    const totalHours =
-      days.reduce(
-        (sum, day) =>
-          sum +
-          Number(
-            day.working_hours || 7
-          ),
-        0
-      );
-
-    const presentHours =
-      days.reduce(
-        (sum, day) => {
-          if (
+      const presentDays =
+        days.filter(
+          (day) =>
             recordMap[
             day.attendance_date
             ] === "present"
-          ) {
-            return (
-              sum +
-              Number(
-                day.working_hours ||
-                7
-              )
-            );
-          }
+        ).length;
 
-          return sum;
-        },
-        0
-      );
+      const absentDays =
+        totalFinalizedDays -
+        presentDays;
 
-    const absentHours =
-      totalHours -
-      presentHours;
+      const attendancePercentage =
+        totalFinalizedDays > 0
+          ? (
+            (presentDays /
+              totalFinalizedDays) *
+            100
+          ).toFixed(1)
+          : "0.0";
 
-    return {
-      totalFinalizedDays,
-      presentDays,
-      absentDays,
-      attendancePercentage,
-      totalHours,
-      presentHours,
-      absentHours,
-    };
+      const totalHours =
+        days.reduce(
+          (sum, day) =>
+            sum +
+            Number(
+              day.working_hours || 7
+            ),
+          0
+        );
+
+      const presentHours =
+        days.reduce(
+          (sum, day) => {
+            if (
+              recordMap[
+              day.attendance_date
+              ] === "present"
+            ) {
+              return (
+                sum +
+                Number(
+                  day.working_hours ||
+                  7
+                )
+              );
+            }
+
+            return sum;
+          },
+          0
+        );
+
+      const absentHours =
+        totalHours -
+        presentHours;
+
+      return {
+        totalFinalizedDays,
+        presentDays,
+        absentDays,
+        attendancePercentage,
+        totalHours,
+        presentHours,
+        absentHours,
+      };
     },
     []
   );
@@ -1631,16 +1850,16 @@ ${createStudentList(
             return `${getShortDate(
               dateValue
             )}\nHOLIDAY${day.remark
-                ? `\n${day.remark}`
-                : ""
+              ? `\n${day.remark}`
+              : ""
               }`;
           }
 
           return `${getShortDate(
             dateValue
           )}${day?.day_order
-              ? `\nDO ${day.day_order}`
-              : ""
+            ? `\nDO ${day.day_order}`
+            : ""
             }`;
         }),
         "Total Working Days",
@@ -2922,6 +3141,30 @@ ${createStudentList(
                 </div>
               </div>
             </section>
+
+            {/* PASTE WHATSAPP ATTENDANCE */}
+
+            <div className="toolbar">
+              <textarea
+                value={attendancePasteText}
+                placeholder="Paste today's WhatsApp attendance message here..."
+                rows={5}
+                disabled={isFinalized}
+                onChange={(event) =>
+                  setAttendancePasteText(event.target.value)
+                }
+                onPaste={(event) => {
+                  const pastedText =
+                    event.clipboardData.getData("text");
+
+                  setAttendancePasteText(pastedText);
+
+                  setTimeout(() => {
+                    handleAttendancePaste(pastedText);
+                  }, 0);
+                }}
+              />
+            </div>
 
             {/* =================================================
                 SEARCH
