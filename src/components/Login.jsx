@@ -56,7 +56,7 @@ function Login({ onLogin }) {
 
         if (loginError) {
           console.error("Admin login error:", loginError);
-          setError("Invalid login credentials.");
+          setError(loginError.message);
           return;
         }
 
@@ -188,9 +188,8 @@ function Login({ onLogin }) {
         <div className="login-tabs">
           <button
             type="button"
-            className={`login-tab ${
-              loginType === "admin" ? "active" : ""
-            }`}
+            className={`login-tab ${loginType === "admin" ? "active" : ""
+              }`}
             onClick={() => switchLoginType("admin")}
             disabled={loading}
           >
@@ -199,9 +198,8 @@ function Login({ onLogin }) {
 
           <button
             type="button"
-            className={`login-tab ${
-              loginType === "student" ? "active" : ""
-            }`}
+            className={`login-tab ${loginType === "student" ? "active" : ""
+              }`}
             onClick={() => switchLoginType("student")}
             disabled={loading}
           >
